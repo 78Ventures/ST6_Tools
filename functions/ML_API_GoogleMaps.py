@@ -1,10 +1,9 @@
 # FILE: ML_API_GoogleMaps.py
-# VERSION: 0.14
+# VERSION: 0.15
 #######################################
 # CHANGELOG
 #######################################
-# 1. Updated file header format
-# 2. Updated get_route_distance function to extract total distance from Google Directions link
+# 1. Updated get_route_distance function to extract total distance from Directions API response
 
 import logging
 import requests
@@ -21,31 +20,31 @@ def get_route_distance(locations, debug_mileage):
     destination = f"{locations[-1][0]},{locations[-1][1]}"
     waypoints = '|'.join([f"{lat},{lng}" for lat, lng in locations[1:-1]])
     
-    url = f"https://www.google.com/maps/dir/?api=1&origin={origin}&destination={destination}&waypoints={waypoints}&travelmode=driving"
+    url = f"https://maps.googleapis.com/maps/api/directions/json?origin={origin}&destination={destination}&waypoints={waypoints}&key={ROUTES_API_KEY}"
     
     if debug_mileage:
-        logging.debug(f"Google Directions URL: {url}")
+        logging.debug(f"Directions API URL: {url}")
     
     response = requests.get(url)
+    directions = response.json()
     
-    if response.status_code != 200:
-        logging.error(f"Error fetching Google Directions: {response.status_code}")
-        raise Exception(f"Error fetching Google Directions: {response.status_code}")
+    if debug_mileage:
+        logging.debug(f"Directions API response: {directions}")
     
-    # Extract the total distance from the Google Directions page
-    start_marker = "Total distance: "
-    end_marker = " mi</div>"
-    start_index = response.text.find(start_marker)
+    if directions['status'] == 'ZERO_RESULTS':
+        logging.warning(f"No route found for locations: {locations}")
+        return 0, [], ""
+    elif directions['status'] != 'OK':
+        logging.error(f"Error fetching route: {directions['status']}")
+        raise Exception(f"Error fetching route: {directions['status']}")
     
-    if start_index == -1:
-        logging.warning(f"Total distance not found in Google Directions for locations: {locations}")
-        return 0, [], url
-    
-    start_index += len(start_marker)
-    end_index = response.text.find(end_marker, start_index)
-    total_distance = float(response.text[start_index:end_index].replace(",", ""))
+    route = directions['routes'][0]
+    legs = route['legs']
+    total_distance = sum(leg['distance']['value'] for leg in legs) * 0.000621371  # Convert meters to miles
     
     if debug_mileage:
         logging.debug(f"Total distance: {total_distance} miles")
     
-    return round(total_distance, 2), [], url
+    map_link = f"https://www.google.com/maps/dir/?api=1&origin={origin}&destination={destination}&waypoints={waypoints}&travelmode=driving"
+    
+    return round(total_distance, 2), [leg['end_address'] for leg in legs], map_link
