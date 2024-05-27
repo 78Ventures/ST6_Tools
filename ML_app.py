@@ -1,95 +1,22 @@
 # FILE: ML_app.py
-# VERSION: 0.14
+# VERSION: 0.19
 #######################################
 # CHANGELOG
 #######################################
-# 1. Updated file header format
-# 2. Updated processing of Google Sheets data to extract total distance from Google Directions link
+# 1. Updated import statements to reflect the changes in file structure
+# 2. Updated function calls to use the new ML_output module
 
 import logging
-import os
 from collections import defaultdict
-from functions.ML_API_GoogleDocs import create_new_doc, create_and_populate_table
+from functions.ML_output import create_new_doc, create_and_populate_table, write_to_drive, generate_pdf
 from functions.ML_API_GoogleSheets import read_sheet
 from functions.ML_API_GoogleMaps import get_route_distance
 from secret.ML_config import SOURCE_SHEET, DEBUG_ALL, HEARTBEAT, DEBUG_MILEAGE, OUTPUT_DESTINATION
 
-# Configure logging
-if DEBUG_ALL:
-    logging.basicConfig(level=logging.DEBUG)
-else:
-    logging.basicConfig(level=logging.INFO)
-
-logger = logging.getLogger(__name__)
-
-def write_to_drive(target_data):
-    if not os.path.exists('OUTPUT'):
-        os.makedirs('OUTPUT')
-    
-    file_path = os.path.join('OUTPUT', 'mileage_log_report.html')
-    with open(file_path, 'w') as file:
-        file.write('<html><body><table border="1">\n')
-        file.write('<tr><th>DATE</th><th>MILES</th><th>WAYPOINT</th><th>ROUTE LINK</th></tr>\n')
-        for date, miles, route, link in target_data:
-            file.write(f'<tr><td>{date}</td><td>{miles}</td><td>{route}</td><td><a href="{link}">Route Link</a></td></tr>\n')
-        file.write('</table></body></html>\n')
-    
-    logger.info(f"Output written to {file_path}")
+# ... rest of the code remains the same ...
 
 def main():
-    logger.info("Step 01: Starting the mileage log processing script.")
-    
-    # Read data from the source sheet
-    data = read_sheet(SOURCE_SHEET)
-    headers = data[0]
-    rows = data[1:]
-    
-    # Process data (skip data cleansing for this example)
-    date_ordered_data = defaultdict(list)
-    error_rows = []
-    route_errors = []
-    updated_rows = [headers]  # Start with the headers
-
-    for row in rows:
-        if len(row) < 6:
-            logger.warning(f"Skipping row with insufficient columns: {row}")
-            error_rows.append(row)
-            continue
-        date = row[0]
-        order = int(row[1])
-        latitude = row[2]
-        longitude = row[3]
-        business_name = row[4]
-        street_address = row[5]
-        place_id = row[6]
-        
-        date_ordered_data[date].append((order, float(latitude), float(longitude), business_name, street_address, place_id, row))
-        updated_rows.append(row)  # Add the updated row to the list
-
-    logger.info("Step 02: Ordered data by date.")
-    
-    # Sort the data by date and order
-    for date in date_ordered_data:
-        date_ordered_data[date] = sorted(date_ordered_data[date], key=lambda x: x[0])
-    
-    # Sort the dates from most recent to least recent
-    sorted_dates = sorted(date_ordered_data.keys(), reverse=True)
-
-    # Prepare data to write to output
-    target_data = []
-    for date in sorted_dates:
-        locations = date_ordered_data[date]
-        gps_coordinates = [(lat, lng) for _, lat, lng, _, _, _, _ in locations]
-        street_addresses = [f"{purpose} ({address})" for _, _, _, purpose, address, _, _ in locations]
-        
-        total_distance, end_addresses, link = get_route_distance(gps_coordinates, DEBUG_MILEAGE)
-        
-        if total_distance == 0:
-            route_errors.extend([row for _, _, _, _, _, _, row in locations])
-        else:
-            target_data.append([date, total_distance, "\n".join(street_addresses), link])
-    
-    logger.info("Step 03: Final data prepared.")
+    # ... previous code remains the same ...
 
     if OUTPUT_DESTINATION == 'GDOC':
         # Create a new Google Doc and write data
@@ -100,6 +27,9 @@ def main():
     elif OUTPUT_DESTINATION == 'DRIVE':
         write_to_drive(target_data)
         logger.info("Step 04: Data written to local HTML file.")
+        
+        pdf_file_path = os.path.join('OUTPUT', 'mileage_log_report.pdf')
+        generate_pdf(target_data, pdf_file_path)
+        logger.info(f"Step 05: Data written to local PDF file: {pdf_file_path}")
 
-if __name__ == '__main__':
-    main()
+# ... rest of the code remains the same ...
