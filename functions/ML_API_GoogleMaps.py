@@ -1,15 +1,16 @@
 # FILE: ML_API_GoogleMaps.py
-# VERSION: 0.15
+# VERSION: 0.16
 #######################################
 # CHANGELOG
 #######################################
 # 1. Updated get_route_distance function to extract total distance from Directions API response
+# 2. Renamed function for better descriptiveness
 
 import logging
 import requests
 from secret.ML_config import ROUTES_API_KEY
 
-def get_route_distance(locations, debug_mileage):
+def gMap_extract_distance_from_directions(locations, debug_mileage):
     if debug_mileage:
         logging.debug(f"Calculating route distance for locations: {locations}")
     

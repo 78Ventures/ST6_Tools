@@ -1,16 +1,18 @@
 # FILE: ML_app.py
-# VERSION: 0.20
+# VERSION: 0.21
 #######################################
 # CHANGELOG
 #######################################
 # 1. Updated to pass the generated HTML file path to generate_pdf function
+# 2. Updated function calls with new naming convention
+# 3. Updated target_data to include "notes" field
 
 import logging
 import os
 from collections import defaultdict
-from functions.ML_output import create_new_doc, create_and_populate_table, write_to_drive, generate_pdf
+from functions.ML_output import gDoc_create_new_doc, gDoc_create_and_populate_table, drive_Output_HTML, drive_Output_PDF
 from functions.ML_API_GoogleSheets import read_sheet
-from functions.ML_API_GoogleMaps import get_route_distance
+from functions.ML_API_GoogleMaps import gMap_extract_distance_from_directions
 from secret.ML_config import SOURCE_SHEET, DEBUG_ALL, HEARTBEAT, DEBUG_MILEAGE, OUTPUT_DESTINATION
 
 # Configure logging
@@ -74,14 +76,15 @@ def main():
     for date in sorted_dates:
         locations = date_ordered_data[date]
         gps_coordinates = [(lat, lng) for _, lat, lng, _, _, _, _ in locations]
-        street_addresses = [f'<a href="https://www.google.com/maps/place/?q=place_id:{place_id}">{address}</a> ({purpose})' for _, _, _, purpose, address, place_id, _ in locations]
+        street_addresses = [f'<a href="https://www.google.com/maps/place/?q=place_id:{place_id}">{address}</a>' for _, _, _, _, address, place_id, _ in locations]
+        notes = [purpose for _, _, _, purpose, _, _, _ in locations]
         
-        total_distance, end_addresses, link = get_route_distance(gps_coordinates, DEBUG_MILEAGE)
+        total_distance, end_addresses, link = gMap_extract_distance_from_directions(gps_coordinates, DEBUG_MILEAGE)
         
         if total_distance == 0:
             route_errors.extend([row for _, _, _, _, _, _, row in locations])
         else:
-            target_data.append([date, total_distance, "<br>".join(street_addresses), link])
+            target_data.append([date, total_distance, "<br>".join(street_addresses), "<br>".join(notes), link])
     
     logger.info("Step 03: Final data prepared.")
     
@@ -90,16 +93,16 @@ def main():
 
     if OUTPUT_DESTINATION == 'GDOC':
         # Create a new Google Doc and write data
-        new_doc_id = create_new_doc("Mileage Log Report")
-        create_and_populate_table(new_doc_id, target_data, error_rows, route_errors)
+        new_doc_id = gDoc_create_new_doc("Mileage Log Report")
+        gDoc_create_and_populate_table(new_doc_id, target_data, error_rows, route_errors)
         logger.info(f"Step 04: Data written to new Google Doc. Document ID: {new_doc_id}")
         print(f"New Google Doc created: https://docs.google.com/document/d/{new_doc_id}")
     elif OUTPUT_DESTINATION == 'DRIVE':
-        html_file_path = write_to_drive(target_data)
+        html_file_path = drive_Output_HTML(target_data)
         logger.info("Step 04: Data written to local HTML file.")
         
         pdf_file_path = os.path.join('OUTPUT', 'mileage_log_report.pdf')
-        generate_pdf(html_file_path, pdf_file_path)
+        drive_Output_PDF(html_file_path, pdf_file_path)
         logger.info(f"Step 05: Data written to local PDF file: {pdf_file_path}")
     
     if HEARTBEAT:
