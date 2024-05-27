@@ -1,16 +1,14 @@
 # FILE: ML_output.py
-# VERSION: 0.01
+# VERSION: 0.04
 #######################################
 # CHANGELOG
 #######################################
-# 1. Moved output functions from ML_app.py
-# 2. Moved Google Docs output functions from ML_API_GoogleDocs.py
+# 1. Updated generate_pdf function to render HTML as PDF using xhtml2pdf
 
 import os
 import logging
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from io import BytesIO
+from xhtml2pdf import pisa
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from secret.ML_config import SERVICE_ACCOUNT_FILE
@@ -99,26 +97,11 @@ def write_to_drive(target_data):
         file.write('</table></body></html>\n')
     
     logger.info(f"Output written to {file_path}")
+    return file_path
 
-def generate_pdf(target_data, file_path):
-    pdf = SimpleDocTemplate(file_path, pagesize=letter)
-    table_data = [['DATE', 'MILES', 'WAYPOINT']]
-    table_data.extend([[date, miles, route] for date, miles, route, _ in target_data])
-    table = Table(table_data)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-        ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 12),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-    pdf.build([table])
+def generate_pdf(html_file_path, pdf_file_path):
+    with open(html_file_path, 'r') as html_file:
+        html_content = html_file.read()
+    
+    with open(pdf_file_path, 'wb') as pdf_file:
+        pisa.pisaDocument(BytesIO(html_content.encode('utf-8')), pdf_file)
