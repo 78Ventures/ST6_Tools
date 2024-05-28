@@ -4,12 +4,13 @@
 # CHANGELOG
 ######################################
 # 1. Corrected import paths for ML_Render_HTML and ML_Render_PDF.
+# 2. Added usage of the timestamped PDF generation function.
 
 import logging
 import os
 from collections import defaultdict
 from functions.RENDER.ML_Render_HTML import drive_Output_HTML
-from functions.RENDER.ML_Render_PDF import drive_Output_PDF
+from functions.RENDER.ML_Render_PDF import generate_pdf_with_timestamp
 from functions.ML_API_GoogleSheets import read_sheet
 from functions.ML_API_GoogleMaps import gMap_extract_distance_from_directions
 from secret.ML_config import SOURCE_SHEET, DEBUG_ALL, HEARTBEAT, DEBUG_MILEAGE, OUTPUT_DESTINATION
@@ -94,9 +95,7 @@ def main():
         
         logger.info("Generating PDF from HTML content.")
         # Generate PDF from HTML content
-        pdf_file_path = os.path.join('OUTPUT', 'mileage_log_report.pdf')
-        drive_Output_PDF(html_content, pdf_file_path)
-        logger.info(f"Data written to local PDF file: {pdf_file_path}")
+        generate_pdf_with_timestamp(html_content)
 
     logger.info("Rendering control script completed.")
 

@@ -1,13 +1,16 @@
 # FILE: ML_Render_HTML.py
-# VERSION: 0.2
+# VERSION: 0.3
 ######################################
 # CHANGELOG
 ######################################
 # 1. Added inline CSS to ensure consistent styling in HTML and PDF outputs.
+# 2. Added timestamp to the HTML output filename.
 
 import os
+from datetime import datetime
 
 def drive_Output_HTML(target_data):
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     html_content = """
     <html>
     <head><title>Mileage Log Report</title></head>
@@ -63,8 +66,8 @@ def drive_Output_HTML(target_data):
     </html>
     """
 
-    # Save the HTML content to a file
-    html_file_path = os.path.join('OUTPUT', 'mileage_log_report.html')
+    # Save the HTML content to a file with a timestamp
+    html_file_path = os.path.join('OUTPUT', f'mileage_log_report_{timestamp}.html')
     with open(html_file_path, 'w') as file:
         file.write(html_content)
 
